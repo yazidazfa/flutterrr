@@ -11,10 +11,10 @@ class SharedPreferencesService {
 
   // Using a singleton pattern
   static Future<SharedPreferencesService> getInstance() async {
-    _instance ??= SharedPreferencesService._();
-
-    _preferences = await SharedPreferences.getInstance();
-
+    if (_instance == null) {
+      _instance = SharedPreferencesService._();
+      _preferences = await SharedPreferences.getInstance();
+    }
     return _instance!;
   }
 

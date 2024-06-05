@@ -5,8 +5,13 @@ import 'package:kopma/data/transaction_repository.dart';
 
 class HistoryPage extends StatelessWidget {
   final TransactionRepository transactionRepository;
+  final String currentUserId; // New field to store the current user ID
 
-  const HistoryPage({super.key, required this.transactionRepository});
+  const HistoryPage({
+    Key? key,
+    required this.transactionRepository,
+    required this.currentUserId, // Updated constructor to accept current user ID
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +26,10 @@ class HistoryPage extends StatelessWidget {
             if (state is TransactionLoading) {
               return const Center(child: CircularProgressIndicator());
             } else if (state is TransactionLoaded) {
-              final transactions = state.transactions;
+              // Filter transactions by current user ID
+              final transactions = state.transactions.where((transaction) => transaction.buyerId == currentUserId).toList();
+              // Sort filtered transactions by date in descending order
+              transactions.sort((a, b) => b.dateTime.compareTo(a.dateTime));
               return ListView.builder(
                 itemCount: transactions.length,
                 itemBuilder: (context, index) {

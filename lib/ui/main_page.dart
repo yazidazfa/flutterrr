@@ -41,7 +41,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final List<Widget> widgetOptions = <Widget>[
       const HomePage(),
-      HistoryPage(transactionRepository: widget.transactionRepository),
+      HistoryPage(transactionRepository: widget.transactionRepository, currentUserId: sharedPrefService.uid,),
       ProfilePage(userRepository: widget.userRepository),
     ];
     return Scaffold(

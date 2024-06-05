@@ -20,15 +20,30 @@ class FirebaseUserDataSource implements UserRepository {
     }
   }
 
+  // @override
+  // Future<UserModel> getMyUser(String myUserId) async {
+  //   try {
+  //     return await usersCollection
+  //         .doc(myUserId)
+  //         .get()
+  //         .whenComplete(() => {
+  //       if(sharedPrefService.uid.isEmpty) sharedPrefService.uid = myUserId
+  //     }).then((value) => UserModel.fromEntity(UserEntity.fromDocument(value.data()!)));
+  //   } catch (e) {
+  //     log(e.toString());
+  //     rethrow;
+  //   }
+  // }
+
   @override
   Future<UserModel> getMyUser(String myUserId) async {
     try {
-      return await usersCollection
-          .doc(myUserId)
-          .get()
-          .whenComplete(() => {
-        if(sharedPrefService.uid.isEmpty) sharedPrefService.uid = myUserId
-      }).then((value) => UserModel.fromEntity(UserEntity.fromDocument(value.data()!)));
+      final value = await usersCollection.doc(myUserId).get();
+      // Here, you should check if sharedPrefService.uid is empty and set it if necessary
+      if (sharedPrefService.uid.isEmpty) {
+        sharedPrefService.uid = myUserId;
+      }
+      return UserModel.fromEntity(UserEntity.fromDocument(value.data()!));
     } catch (e) {
       log(e.toString());
       rethrow;

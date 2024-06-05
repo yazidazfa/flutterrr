@@ -19,10 +19,12 @@ import 'package:kopma/data/model/user/user_model.dart';
 import 'package:kopma/data/transaction_repository.dart';
 import 'package:kopma/simple_bloc_observer.dart';
 import 'package:kopma/ui/main_page.dart';
-import 'data/datasource/network/firebase_item_datasource.dart';
-import 'data/user_repository.dart';
-import 'di/service_locator.dart';
-import 'firebase_options.dart';
+import 'package:kopma/data/datasource/network/firebase_item_datasource.dart';
+import 'package:kopma/data/user_repository.dart';
+import 'package:kopma/di/service_locator.dart';
+import 'package:kopma/firebase_options.dart';
+
+import 'data/datasource/shared_preferences_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,99 +37,123 @@ void main() async {
   final itemRepository = ItemRepositoryImpl(FirebaseItemDataSource(), LocalCartDataSource());
   final transactionRepository = TransactionRepository(FirebaseFirestore.instance);
 
-  runApp(MyApp(userRepository, itemRepository, transactionRepository));
+  // Initialize sharedPrefService
+  final sharedPrefService = await SharedPreferencesService.getInstance();
+
+  runApp(MyApp(
+    userRepository: userRepository,
+    itemRepository: itemRepository,
+    transactionRepository: transactionRepository,
+    sharedPrefService: sharedPrefService, // Pass sharedPrefService
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final UserRepository userRepository;
   final ItemRepository itemRepository;
   final TransactionRepository transactionRepository;
+  final SharedPreferencesService sharedPrefService;
 
-  const MyApp(this.userRepository, this.itemRepository, this.transactionRepository, {super.key});
+  const MyApp({
+    required this.userRepository,
+    required this.itemRepository,
+    required this.transactionRepository,
+    required this.sharedPrefService,
+    Key? key,
+  }) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
-        providers: [
-          RepositoryProvider<UserBloc>(
-              create: (_) => UserBloc(userRepository: userRepository)),
-          RepositoryProvider<ItemBloc>(
-              create: (_) => ItemBloc(itemRepository: itemRepository)),
-          RepositoryProvider<DetailItemBloc>(
-              create: (_) => DetailItemBloc(itemRepository: itemRepository)),
-          RepositoryProvider<TransactionBloc>(
-              create: (_) => TransactionBloc(transactionRepository: transactionRepository)),
-        ],
-        child: BlocBuilder<UserBloc, UserState>(
-          builder: (BuildContext context, UserState state) {
-            return MultiBlocProvider(
-              providers: [
-                BlocProvider(
-                    create: (context) => UserBloc(
-                        userRepository:
-                        context.read<UserBloc>().userRepository)),
-                BlocProvider(
-                    create: (context) => ItemBloc(
-                        itemRepository:
-                        context.read<ItemBloc>().itemRepository)),
-                BlocProvider(
-                    create: (context) => DetailItemBloc(
-                        itemRepository:
-                        context.read<DetailItemBloc>().itemRepository)),
-                BlocProvider(
-                    create: (context) => TransactionBloc(
-                        transactionRepository:
-                        context.read<TransactionBloc>().transactionRepository)),
-              ],
-              child: MainApp(userRepository: userRepository, transactionRepository: transactionRepository),
-            );
-          },
-        ));
+      providers: [
+        RepositoryProvider<UserBloc>(
+          create: (_) => UserBloc(userRepository: userRepository),
+        ),
+        RepositoryProvider<ItemBloc>(
+          create: (_) => ItemBloc(itemRepository: itemRepository),
+        ),
+        RepositoryProvider<DetailItemBloc>(
+          create: (_) => DetailItemBloc(itemRepository: itemRepository),
+        ),
+        RepositoryProvider<TransactionBloc>(
+          create: (_) => TransactionBloc(transactionRepository: transactionRepository),
+        ),
+      ],
+      child: BlocBuilder<UserBloc, UserState>(
+        builder: (BuildContext context, UserState state) {
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider<UserBloc>.value(
+                value: context.read<UserBloc>(),
+              ),
+              BlocProvider<ItemBloc>.value(
+                value: context.read<ItemBloc>(),
+              ),
+              BlocProvider<DetailItemBloc>.value(
+                value: context.read<DetailItemBloc>(),
+              ),
+              BlocProvider<TransactionBloc>.value(
+                value: context.read<TransactionBloc>(),
+              ),
+            ],
+            child: MainApp(
+              userRepository: userRepository,
+              transactionRepository: transactionRepository,
+              sharedPrefService: sharedPrefService, // Pass sharedPrefService
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
 class MainApp extends StatefulWidget {
   final UserRepository userRepository;
   final TransactionRepository transactionRepository;
+  final SharedPreferencesService sharedPrefService;
 
-  const MainApp({super.key, required this.userRepository, required this.transactionRepository});
+  const MainApp({
+    required this.userRepository,
+    required this.transactionRepository,
+    required this.sharedPrefService,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<MainApp> createState() => _MainApp();
 }
 
 class _MainApp extends State<MainApp> {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'kopma',
       theme: ThemeData(
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: ButtonStyle(
-              padding: MaterialStateProperty.all<EdgeInsets>(
-                const EdgeInsets.all(8),
-              ),
-              backgroundColor: MaterialStateProperty.all<Color>(Colors.amber),
-              foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: ButtonStyle(
+            padding: MaterialStateProperty.all<EdgeInsets>(
+              const EdgeInsets.all(8),
             ),
+            backgroundColor: MaterialStateProperty.all<Color>(Colors.amber),
+            foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
           ),
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
-          useMaterial3: true),
+        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
+        useMaterial3: true,
+      ),
       localizationsDelegates: const [
         DefaultMaterialLocalizations.delegate,
         DefaultWidgetsLocalizations.delegate,
         DefaultCupertinoLocalizations.delegate, // This is required
       ],
-      initialRoute:
-      FirebaseAuth.instance.currentUser == null ? '/sign-in' : '/home',
+      initialRoute: FirebaseAuth.instance.currentUser == null ? '/sign-in' : '/home',
       routes: {
         '/sign-in': (context) {
           return BlocListener<UserBloc, UserState>(
@@ -135,7 +161,7 @@ class _MainApp extends State<MainApp> {
             child: SignInScreen(
               providers: [
                 EmailAuthProvider(),
-                GoogleProvider(clientId: googleClientId)
+                GoogleProvider(clientId: googleClientId),
               ],
               actions: [
                 AuthStateChangeAction<UserCreated>((context, state) {
@@ -143,17 +169,21 @@ class _MainApp extends State<MainApp> {
                   setState(() {
                     context.read<UserBloc>().add(SetUserData(
                         user: UserModel(
-                            id: user.uid,
-                            name: user.displayName ?? '',
-                            email: user.email!,
-                            image: user.photoURL,
-                            balance: 0)));
+                          id: user.uid,
+                          name: user.displayName ?? '',
+                          email: user.email!,
+                          image: user.photoURL,
+                          balance: 0,
+                        )));
                   });
                   Navigator.popAndPushNamed(context, '/sign-in');
                 }),
                 AuthStateChangeAction<SignedIn>((context, state) {
                   User user = state.user!;
                   setState(() {
+                    // Update UID in shared preferences when user signs in
+                    widget.sharedPrefService.uid = user.uid;
+                    // Dispatch GetMyUser event to fetch user data from Firestore
                     context.read<UserBloc>().add(GetMyUser(myUserId: user.uid));
                   });
                   Navigator.pushReplacementNamed(context, '/home');
@@ -163,7 +193,10 @@ class _MainApp extends State<MainApp> {
           );
         },
         '/home': (context) {
-          return MainPage(userRepository: widget.userRepository, transactionRepository: widget.transactionRepository);
+          return MainPage(
+            userRepository: widget.userRepository,
+            transactionRepository: widget.transactionRepository,
+          );
         },
       },
     );
