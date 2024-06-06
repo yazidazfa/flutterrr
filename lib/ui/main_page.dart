@@ -53,7 +53,7 @@ class _MainPageState extends State<MainPage> {
             onPressed: () {
               Navigator.push(context,
                   MaterialPageRoute(builder: (context) {
-                    return const CartPage();
+                    return CartPage();
                   }));
             },
           )

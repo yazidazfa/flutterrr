@@ -99,14 +99,22 @@ class ItemRepositoryImpl implements ItemRepository {
       rethrow;
     }
   }
+  
 
   @override
   Future<bool> deleteItemFromCart(String itemId) async {
     try {
-      return await _localCartDataSource.deleteItemFromCart(itemId);
+      final success = await _localCartDataSource.deleteItemFromCart(itemId);
+      return success;
     } catch (e) {
       log(e.toString());
       rethrow;
     }
+  }
+
+  @override
+  Future<bool> updateItemQuantityInCart(String itemId, int newQuantity) {
+    // TODO: implement updateItemQuantityInCart
+    throw UnimplementedError();
   }
 }

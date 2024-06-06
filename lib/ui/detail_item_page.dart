@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kopma/bloc/detail_item_bloc/detail_item_bloc.dart';
 import 'package:kopma/data/model/item/item_model.dart';
+import 'package:kopma/di/service_locator.dart';
 
+import '../data/item_repository.dart';
 import 'checkout_page.dart';
 
 class DetailItemPage extends StatefulWidget {
@@ -17,9 +19,12 @@ class DetailItemPage extends StatefulWidget {
 }
 
 class _DetailItemPageState extends State<DetailItemPage> {
+  late final ItemRepository itemRepository;
+
   @override
   void initState() {
     super.initState();
+    itemRepository = serviceLocator<ItemRepository>();
     context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
   }
 
@@ -43,9 +48,9 @@ class _DetailItemPageState extends State<DetailItemPage> {
                 message:
                 "Nailed it! ${state.item?.name} is chilling in your cart.");
             context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
-          } else if(state is BuyItemSuccess) {
+          } else if (state is BuyItemSuccess) {
             context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
-          } else if(state is BuyItemFailure) {
+          } else if (state is BuyItemFailure) {
             context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
           }
         },
@@ -53,73 +58,76 @@ class _DetailItemPageState extends State<DetailItemPage> {
           builder: (context, state) {
             return SingleChildScrollView(
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Card(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: state.item?.image ?? "",
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Card(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: state.item?.image ?? "",
+                        ),
+                        Text(state.item?.name ?? ""),
+                        Text(state.item?.price.toString() ?? ""),
+                      ],
+                    ),
+                  ),
+                  Card(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Category"),
+                        Text(state.item?.category ?? ""),
+                        const Text("Description"),
+                        Text(state.item?.description ?? "")
+                      ],
+                    ),
+                  ),
+                  Card(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(state.item?.sellerName ?? ""),
+                        Text(state.item?.sellerAddress ?? ""),
+                      ],
+                    ),
+                  ),
+                  Card(
+                    elevation: 6,
+                    child: Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              context
+                                  .read<DetailItemBloc>()
+                                  .add(AddItemToCart(item: state.item!));
+                            });
+                          },
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: const Text("Add to cart"),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, right: 4),
+                        ),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) {
+                                    return CheckoutPage(
+                                        item: state.item ?? ItemModel.empty);
+                                  }));
+                            },
+                            child: const Text("Buy Now"),
                           ),
-                          Text(state.item?.name ?? ""),
-                          Text(state.item?.price.toString() ?? ""),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    Card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Category"),
-                          Text(state.item?.category ?? ""),
-                          const Text("Description"),
-                          Text(state.item?.description ?? "")
-                        ],
-                      ),
-                    ),
-                    Card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(state.item?.sellerName ?? ""),
-                          Text(state.item?.sellerAddress ?? ""),
-                        ],
-                      ),
-                    ),
-                    Card(
-                      elevation: 6,
-                      child: Row(
-                        children: [
-                          OutlinedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  context
-                                      .read<DetailItemBloc>()
-                                      .add(AddItemToCart(item: state.item!));
-                                });
-                              },
-                              icon: const Icon(Icons.trolley),
-                              label: const Text("Add to cart")),
-                          const Padding(
-                              padding: EdgeInsets.only(left: 4, right: 4)),
-                          Expanded(
-                              child: FilledButton(
-                                onPressed: () {
-                                  Navigator.push(context,
-                                      MaterialPageRoute(builder: (context) {
-                                        return CheckoutPage(
-                                            item: state.item ?? ItemModel.empty);
-                                      }));
-                                },
-                                child: const Text("Buy Now"),
-                              )),
-                        ],
-                      ),
-                    )
-                  ]
+                  ),
+                ],
               ),
             );
           },

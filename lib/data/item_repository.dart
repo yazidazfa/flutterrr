@@ -22,4 +22,6 @@ abstract class ItemRepository {
   Future<List<ItemModel>> getListItemFromCart();
 
   Future<bool> buyItemFromCart(String itemId, int quantity);
+
+  Future<bool> updateItemQuantityInCart(String itemId, int newQuantity);
 }
