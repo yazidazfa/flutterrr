@@ -160,8 +160,7 @@ class _CartPageState extends State<CartPage> {
                                   CachedNetworkImage(
                                     imageUrl: item.image,
                                     height: 120,
-                                    width: 120,
-                                    fit: BoxFit.cover,
+                                    fit: BoxFit.fitHeight,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(

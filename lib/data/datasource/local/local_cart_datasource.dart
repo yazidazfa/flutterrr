@@ -150,7 +150,15 @@ class LocalCartDataSource {
       rethrow;
     }
   }
-
+  Future<void> _updateFirebaseQuantity(String itemId, int quantityChange) async {
+    try {
+      int currentQuantity = await FirebaseItemDataSource().getQuantity(itemId);
+      int updatedQuantity = currentQuantity + quantityChange; // Quantity change can be negative
+      await FirebaseItemDataSource().updateQuantity(itemId, updatedQuantity);
+    } catch (e) {
+      print('Error updating quantity in Firebase: $e');
+    }
+  }
   Future<bool> buyBulkFromCart(BuildContext context, List<ItemModel> cartItems, int totalPrice) async {
     try {
       UserModel user = await FirebaseItemDataSource().usersCollection
@@ -173,6 +181,7 @@ class LocalCartDataSource {
           for (var cartItem in cartItems) {
             await FirebaseItemDataSource().buyItem(cartItem.itemId!, cartItem.quantity);
             log('buying ${cartItem.itemId!}, ${cartItem.quantity}');
+            await _updateFirebaseQuantity(cartItem.itemId!, -cartItem.quantity); // Update Firebase quantity
             await deleteItemFromCart(cartItem.id!);
             log('deleting ${cartItem.id}');
           }
