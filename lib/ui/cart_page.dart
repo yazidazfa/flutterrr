@@ -23,6 +23,7 @@ class _CartPageState extends State<CartPage> {
   Map<String, int> _quantities = {};
   List<ItemModel> cartItems = [];
   bool isLoading = true;
+  int _totalPrice = 0;
 
   @override
   void initState() {
@@ -39,55 +40,62 @@ class _CartPageState extends State<CartPage> {
       showOkAlertDialog(context: context, title: "Success", message: "Congrats! Your order is on its way!");
     }
   }
+
   Future<void> _updateFirebaseQuantity(String itemId, int quantityBought) async {
     try {
-      // Dapatkan kuantitas saat ini dari Firebase
       int currentQuantity = await FirebaseItemDataSource().getQuantity(itemId);
-
-      // Kurangi kuantitas yang dibeli dari kuantitas saat ini
       int updatedQuantity = currentQuantity - quantityBought;
-
-      // Perbarui kuantitas di Firebase
       await FirebaseItemDataSource().updateQuantity(itemId, updatedQuantity);
     } catch (e) {
       print('Error updating quantity in Firebase: $e');
-      // Handle error
     }
   }
 
   Future<void> _loadCartItems() async {
     setState(() {
       _cartItemsFuture = _itemRepository.getListItemFromCart();
-      isLoading = true; // Set loading state to true
+      isLoading = true;
     });
 
     try {
       final items = await _cartItemsFuture;
       setState(() {
-        _quantities = {};
-        isLoading = false; // Set loading state to false when loading is complete
+        cartItems = items;
+        _quantities = {for (var item in items) item.id!: 1}; // Initialize quantities to 1
+        _calculateTotalPrice();
+        isLoading = false;
       });
     } catch (e) {
       setState(() {
-        isLoading = false; // Set loading state to false on error
+        isLoading = false;
       });
-      // Handle error
       print('Error loading cart items: $e');
     }
   }
 
+  void _calculateTotalPrice() {
+    setState(() {
+      _totalPrice = cartItems.fold(0, (total, item) {
+        int quantity = _quantities[item.id!] ?? 1; // Default quantity to 1
+        return total + (item.price * quantity);
+      });
+    });
+  }
+
   Future<void> _incrementCounter(String itemId) async {
     setState(() {
-      int currentQuantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
+      int currentQuantity = _quantities[itemId] ?? 1;
       _quantities[itemId] = currentQuantity + 1;
+      _calculateTotalPrice();
     });
   }
 
   Future<void> _decrementCounter(String itemId) async {
     setState(() {
-      int currentQuantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
+      int currentQuantity = _quantities[itemId] ?? 1;
       if (currentQuantity > 1) {
         _quantities[itemId] = currentQuantity - 1;
+        _calculateTotalPrice();
       }
     });
   }
@@ -97,29 +105,19 @@ class _CartPageState extends State<CartPage> {
     _loadCartItems();
   }
 
-  int _calculateTotalPrice(ItemModel item, int quantity) {
-    return item.price * quantity;
+  Future<void> _buyBulk(BuildContext context, List<ItemModel> cartItemsWithQuantities, int totalPrice) async {
+    bool success = await cartDataSource.buyBulkFromCart(context, cartItemsWithQuantities, totalPrice);
+    if (success) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      _loadCartItems();
+    }
   }
 
-  Future<void> _checkout(BuildContext context) async {
-    List<Map<String, dynamic>> itemsToBuy = [];
-
-    // Iterate through cart items and collect information
-    for (var item in cartItems) {
-      String itemId = item.id!;
-      int quantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
-      itemsToBuy.add({
-        'itemId': itemId,
-        'quantity': quantity,
-      });
-    }
-
-    // Call the buy method once with all items to be purchased
-    bool success = await cartDataSource.buyBulkFromCart(context, itemsToBuy);
-
-    if (success) {
-      _loadCartItems(); // Refresh cart after successful purchase
-    }
+  void _checkout(BuildContext context) {
+    List<ItemModel> cartItemsWithQuantities = cartItems.map((item) {
+      return item.copyWith(quantity: _quantities[item.id!] ?? 1);
+    }).toList();
+    _buyBulk(context, cartItemsWithQuantities, _totalPrice);
   }
 
   @override
@@ -129,7 +127,7 @@ class _CartPageState extends State<CartPage> {
         title: const Text('Cart'),
       ),
       body: RefreshIndicator(
-        onRefresh: () => _loadCartItems(), // Reload cart items when refreshed
+        onRefresh: _loadCartItems,
         child: FutureBuilder<List<ItemModel>>(
           future: _cartItemsFuture,
           builder: (context, snapshot) {
@@ -149,8 +147,8 @@ class _CartPageState extends State<CartPage> {
                       itemBuilder: (context, index) {
                         ItemModel item = cartItems[index];
                         String itemId = item.id!;
-                        int quantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
-                        int totalPrice = _calculateTotalPrice(item, quantity);
+                        int quantity = _quantities[itemId] ?? 1; // Default quantity to 1
+                        int totalPrice = item.price * quantity;
                         return Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Card(
@@ -159,22 +157,11 @@ class _CartPageState extends State<CartPage> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                                  Container(
+                                  CachedNetworkImage(
+                                    imageUrl: item.image,
                                     height: 120,
-                                    child: CachedNetworkImage(
-                                      imageUrl: item.image,
-                                      fit: BoxFit.fitHeight,
-                                      imageBuilder: (context, imageProvider) => Container(
-                                        height: 120,
-                                        width: 120,
-                                        decoration: BoxDecoration(
-                                          image: DecorationImage(
-                                            image: imageProvider,
-                                            fit: BoxFit.fitHeight,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    width: 120,
+                                    fit: BoxFit.cover,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -189,17 +176,12 @@ class _CartPageState extends State<CartPage> {
                                         Text('Rp.${item.price}'),
                                         Text('Total: Rp.${totalPrice.toString()}'),
                                         Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: <Widget>[
                                             IconButton(
                                               icon: const Icon(Icons.remove),
                                               onPressed: () => _decrementCounter(itemId),
                                             ),
-                                            Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8.0), // Adjust the horizontal padding as needed
-                                              child: Text('$quantity'),
-                                            ),
+                                            Text('$quantity'),
                                             IconButton(
                                               icon: const Icon(Icons.add),
                                               onPressed: () => _incrementCounter(itemId),
@@ -212,14 +194,11 @@ class _CartPageState extends State<CartPage> {
                                   Column(
                                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                     children: <Widget>[
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 8.0), // Add some bottom padding
-                                        child: IconButton(
-                                          icon: const Icon(Icons.delete),
-                                          onPressed: () {
-                                            _deleteItem(itemId);
-                                          },
-                                        ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () {
+                                          _deleteItem(itemId);
+                                        },
                                       ),
                                       ElevatedButton(
                                         onPressed: () {
@@ -239,11 +218,17 @@ class _CartPageState extends State<CartPage> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _checkout(context);
-                      },
-                      child: const Text('Checkout'),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total: Rp.${_totalPrice.toString()}'),
+                        ElevatedButton(
+                          onPressed: () {
+                            _checkout(context);
+                          },
+                          child: const Text('Checkout'),
+                        ),
+                      ],
                     ),
                   ),
                 ],

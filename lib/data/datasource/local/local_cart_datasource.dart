@@ -6,7 +6,10 @@ import 'package:kopma/data/datasource/network/firebase_item_datasource.dart';
 import 'package:kopma/data/model/cart/cart_collection.dart';
 import 'package:kopma/data/model/item/item_model.dart';
 import '../../../di/service_locator.dart';
+import '../../model/user/user_entity.dart';
+import '../../model/user/user_model.dart';
 import 'local_database.dart';
+import '../shared_preferences_service.dart';
 
 class ItemAlreadyExistsException implements Exception {
   String message = 'Item already exists in your cart';
@@ -98,26 +101,7 @@ class LocalCartDataSource {
     }
   }
 
-  // Future<bool> updateItemQuantity(String itemId, int newQuantity) async {
-  //   try {
-  //     await _logCartItems();
-  //     final db = localDatabase.db;
-  //     final cartCollection = await db.cartCollections.filter().itemIdEqualTo(itemId).findFirst();
-  //     if (cartCollection != null) {
-  //       cartCollection.quantity = newQuantity;
-  //       await db.writeTxn(() async {
-  //         await db.cartCollections.put(cartCollection);
-  //       });
-  //       return true;
-  //     } else {
-  //       return false; // Item not found
-  //     }
-  //   } catch (e, stackTrace) {
-  //     print('Error updating item quantity in database: $e');
-  //     print(stackTrace); // Print the stack trace
-  //     return false;
-  //   }
-  // }
+
 
   Future<bool> buyItemFromCart(BuildContext context, String isarID, itemId, int quantity) async {
     try {
@@ -166,25 +150,49 @@ class LocalCartDataSource {
       rethrow;
     }
   }
-  Future<bool> buyBulkFromCart(BuildContext context, List<Map<String, dynamic>> itemsToBuy) async {
+
+  Future<bool> buyBulkFromCart(BuildContext context, List<ItemModel> cartItems, int totalPrice) async {
     try {
-      // Implement logic to buy multiple items here
-      for (var item in itemsToBuy) {
-        String itemId = item['itemId'];
-        int quantity = item['quantity'];
+      UserModel user = await FirebaseItemDataSource().usersCollection
+          .doc(FirebaseItemDataSource().sharedPrefService.uid)
+          .get()
+          .then((value) => UserModel.fromEntity(UserEntity.fromDocument(value.data()!)));
+      int userBalance = user.balance ?? 0;
 
-        // Call the buy method for each item
-        bool success = await buyItemFromCart(context, itemId, itemId, quantity);
-
-        if (!success) {
-          return false; // Return false if any item purchase fails
+      if (userBalance >= totalPrice) {
+        List<String> outOfStockItems = [];
+        for (var cartItem in cartItems) {
+          ItemModel item = await FirebaseItemDataSource().getDetailItem(cartItem.itemId!);
+          if ((item.quantity - cartItem.quantity) >= 0) {
+            // The item is in stock
+          } else {
+            outOfStockItems.add(cartItem.name);
+          }
         }
+        if (outOfStockItems.isEmpty) {
+          for (var cartItem in cartItems) {
+            await FirebaseItemDataSource().buyItem(cartItem.itemId!, cartItem.quantity);
+            log('buying ${cartItem.itemId!}, ${cartItem.quantity}');
+            await deleteItemFromCart(cartItem.id!);
+            log('deleting ${cartItem.id}');
+          }
+          showOkAlertDialog(context: context, title: "Success", message: "Congrats! Your order is on its way!");
+        } else {
+          showOkAlertDialog(
+            context: context,
+            title: "Out of Stock Item(s)",
+            message: "The following items are out of stock: ${outOfStockItems.join(', ')}",
+          );
+          return false;
+        }
+        return true;
+      } else {
+        showOkAlertDialog(context: context, title: "Failed", message: "You don't have enough balance!");
+        return false;
       }
-
-      return true; // Return true if all items are successfully purchased
     } catch (e) {
-      print('Error buying items: $e');
-      return false; // Return false if an error occurs during purchase
+      log(e.toString());
+      rethrow;
     }
   }
 }

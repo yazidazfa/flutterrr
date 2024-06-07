@@ -16,6 +16,7 @@ class FirebaseItemDataSource {
   final itemsStorage = FirebaseStorage.instance.ref().child('/items');
   final transactionCollection =
   FirebaseFirestore.instance.collection('transaction');
+  final SharedPreferencesService sharedPrefService = serviceLocator<SharedPreferencesService>();
 
   Future<bool> postItem(ItemModel item) async {
     try {
