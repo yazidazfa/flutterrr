@@ -122,7 +122,6 @@ class LocalCartDataSource {
   Future<bool> buyItemFromCart(BuildContext context, String isarID, itemId, int quantity) async {
     try {
       await _firebaseItemDataSource.buyItem(itemId, quantity);
-      showOkAlertDialog(context: context, title: "Success", message: "Congrats! Your order is on its way!");
       deleteItemFromCart(isarID);
       return true;
     } catch (e) {
@@ -132,4 +131,60 @@ class LocalCartDataSource {
     }
   }
 
+  Future<bool> updateItemQuantity(String? itemId, String itemIdFirebase, int newQuantity) async {
+    int idItem = int.parse(itemId!);
+    if (itemId == null) {
+      log('Item ID is null');
+      return false;
+    }
+    try {
+      final db = localDatabase.db;
+      final item = await db.cartCollections.filter().idEqualTo(idItem).findFirst();
+      if (item != null) {
+        final updatedItem = CartCollection(
+          id: idItem,
+          itemId: itemIdFirebase,
+          name: item.name,
+          image: item.image,
+          category: item.category,
+          description: item.description,
+          quantity: newQuantity,
+          price: item.price,
+          sellerId: item.sellerId,
+          sellerName: item.sellerName,
+          sellerEmail: item.sellerEmail,
+          sellerAddress: item.sellerAddress,
+          sellerImage: item.sellerImage,
+        );
+        await db.writeTxn(() async => db.cartCollections.put(updatedItem));
+
+        return true;
+      }
+      return false; // Item not found
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+  Future<bool> buyBulkFromCart(BuildContext context, List<Map<String, dynamic>> itemsToBuy) async {
+    try {
+      // Implement logic to buy multiple items here
+      for (var item in itemsToBuy) {
+        String itemId = item['itemId'];
+        int quantity = item['quantity'];
+
+        // Call the buy method for each item
+        bool success = await buyItemFromCart(context, itemId, itemId, quantity);
+
+        if (!success) {
+          return false; // Return false if any item purchase fails
+        }
+      }
+
+      return true; // Return true if all items are successfully purchased
+    } catch (e) {
+      print('Error buying items: $e');
+      return false; // Return false if an error occurs during purchase
+    }
+  }
 }

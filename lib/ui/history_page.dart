@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kopma/bloc/transaction_bloc/transaction_bloc.dart';
 import 'package:kopma/data/transaction_repository.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:kopma/data/model/transaction/transaction_model.dart';
 
 class HistoryPage extends StatelessWidget {
   final TransactionRepository transactionRepository;
@@ -34,21 +36,50 @@ class HistoryPage extends StatelessWidget {
                 itemCount: transactions.length,
                 itemBuilder: (context, index) {
                   final transaction = transactions[index];
-                  return Card(
-                    margin: const EdgeInsets.all(8.0),
-                    child: ListTile(
-                      leading: transaction.itemImage.isNotEmpty
-                          ? Image.network(transaction.itemImage, width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image_not_supported),
-                      title: Text(transaction.itemName),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Quantity: ${transaction.itemQuantity}'),
-                          Text('Price: \$${transaction.itemPrice}'),
-                          Text('Seller: ${transaction.sellerName}'),
-                          Text('Date: ${transaction.dateTime.toLocal()}'),
-                        ],
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Container(
+                              height: 120,
+                              child: CachedNetworkImage(
+                                imageUrl: transaction.itemImage,
+                                fit: BoxFit.fitHeight,
+                                imageBuilder: (context, imageProvider) => Container(
+                                  height: 120,
+                                  width: 120,
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: imageProvider,
+                                      fit: BoxFit.fitHeight,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    transaction.itemName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  Text('Seller: ${transaction.sellerName}'),
+                                  Text('Rp.${transaction.itemPrice}'),
+                                  Text('Quantity: ${transaction.itemQuantity}'),
+                                  Text('Total: Rp.${transaction.itemPrice * transaction.itemQuantity}'),
+                                  Text('Time: ${transaction.dateTime.toLocal()}'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );

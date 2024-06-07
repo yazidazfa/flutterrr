@@ -143,6 +143,30 @@ class FirebaseItemDataSource {
     }
   }
 
+  Future<void> updateQuantity(String itemId, int updatedQuantity) async {
+    try {
+      await itemsCollection.doc(itemId).update({'quantity': updatedQuantity});
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<int> getQuantity(String itemId) async {
+    try {
+      final itemDoc = await itemsCollection.doc(itemId).get();
+      if (itemDoc.exists && itemDoc.data() != null) {
+        return itemDoc.data()!['quantity'] ?? 0;
+      } else {
+        throw Exception('Item not found or quantity unavailable');
+      }
+    } catch (e) {
+      log(e.toString());
+      rethrow;
+    }
+  }
+
+
   Future<bool> deleteItem(String itemId) {
     // TODO: implement deleteItem
     throw UnimplementedError();

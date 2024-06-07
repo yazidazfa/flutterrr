@@ -12,7 +12,7 @@ import 'checkout_page.dart';
 class DetailItemPage extends StatefulWidget {
   final String idItem;
 
-  const DetailItemPage({super.key, required this.idItem});
+  const DetailItemPage({Key? key, required this.idItem}) : super(key: key);
 
   @override
   State<DetailItemPage> createState() => _DetailItemPageState();
@@ -37,20 +37,19 @@ class _DetailItemPageState extends State<DetailItemPage> {
           if (state == const DetailItemState.empty()) {
             const Text("No Data");
           }
-          if (state is AddItemToCartFailure) {
+          if (state is AddItemToCartFailure || state is BuyItemFailure) {
             showOkAlertDialog(
-                context: context, title: "Error", message: state.errorMessage);
+              context: context,
+              title: "Error",
+              message: "Failure to add to cart"
+            );
             context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
           } else if (state is AddItemToCartSuccess) {
             showOkAlertDialog(
-                context: context,
-                title: "Success",
-                message:
-                "Nailed it! ${state.item?.name} is chilling in your cart.");
-            context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
-          } else if (state is BuyItemSuccess) {
-            context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
-          } else if (state is BuyItemFailure) {
+              context: context,
+              title: "Success",
+              message: "Item added to cart: ${state.item?.name}",
+            );
             context.read<DetailItemBloc>().add(GetDetailItem(itemId: widget.idItem));
           }
         },
@@ -62,66 +61,72 @@ class _DetailItemPageState extends State<DetailItemPage> {
                 children: [
                   Card(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         CachedNetworkImage(
                           imageUrl: state.item?.image ?? "",
                         ),
-                        Text(state.item?.name ?? ""),
-                        Text(state.item?.price.toString() ?? ""),
+                        ListTile(
+                          title: Text(state.item?.name ?? "",style: TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Stock: ${state.item?.quantity.toString() ?? ""}"),
+                              Text("Price: ${state.item?.price.toString() ?? ""}"),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Card(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Category"),
-                        Text(state.item?.category ?? ""),
-                        const Text("Description"),
-                        Text(state.item?.description ?? "")
+                        ListTile(
+                          title: const Text("Category"),
+                          subtitle: Text(state.item?.category ?? ""),
+                        ),
+                        ListTile(
+                          title: const Text("Description"),
+                          subtitle: Text(state.item?.description ?? ""),
+                        ),
                       ],
                     ),
                   ),
                   Card(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(state.item?.sellerName ?? ""),
-                        Text(state.item?.sellerAddress ?? ""),
+                        ListTile(
+                          title: Text("Seller: ${state.item?.sellerName ?? ""}"),
+                          subtitle: Text("Address: ${state.item?.sellerAddress ?? ""}"),
+                        ),
                       ],
                     ),
                   ),
                   Card(
-                    elevation: 6,
                     child: Row(
                       children: [
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              context
-                                  .read<DetailItemBloc>()
-                                  .add(AddItemToCart(item: state.item!));
-                            });
-                          },
-                          icon: const Icon(Icons.add_shopping_cart),
-                          label: const Text("Add to cart"),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4, right: 4),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                context.read<DetailItemBloc>().add(AddItemToCart(item: state.item!));
+                              });
+                            },
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text("Add to Cart"),
+                          ),
                         ),
                         Expanded(
-                          child: ElevatedButton(
+                          child: ElevatedButton.icon(
                             onPressed: () {
-                              Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) {
-                                    return CheckoutPage(
-                                        item: state.item ?? ItemModel.empty);
-                                  }));
+                              Navigator.push(context, MaterialPageRoute(builder: (context) {
+                                return CheckoutPage(item: state.item ?? ItemModel.empty);
+                              }));
                             },
-                            child: const Text("Buy Now"),
+                            icon: const Icon(Icons.shopping_bag),
+                            label: const Text("Buy Now"),
                           ),
                         ),
                       ],
