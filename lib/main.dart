@@ -196,6 +196,9 @@ class _MainApp extends State<MainApp> {
           return MainPage(
             userRepository: widget.userRepository,
             transactionRepository: widget.transactionRepository,
+            sharedPrefService: widget.sharedPrefService,
+            currentUserId: FirebaseAuth.instance.currentUser?.uid,
+
           );
         },
       },

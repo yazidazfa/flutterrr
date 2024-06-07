@@ -10,13 +10,17 @@ import '../data/item_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class CartPage extends StatefulWidget {
-  const CartPage({Key? key}) : super(key: key);
+  final String currentUserId;
+  const CartPage({Key? key, required this.currentUserId}) : super(key: key);
+
 
   @override
-  State<CartPage> createState() => _CartPageState();
+  State<CartPage> createState() => _CartPageState(currentUserId: currentUserId);
 }
 
 class _CartPageState extends State<CartPage> {
+  final String currentUserId;
+  _CartPageState({required this.currentUserId});
   late Future<List<ItemModel>> _cartItemsFuture;
   LocalCartDataSource cartDataSource = LocalCartDataSource(FirebaseItemDataSource());
   final ItemRepository _itemRepository = serviceLocator<ItemRepository>();

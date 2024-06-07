@@ -14,8 +14,16 @@ import 'cart_page.dart';
 class MainPage extends StatefulWidget {
   final UserRepository userRepository;
   final TransactionRepository transactionRepository;
+  final String? currentUserId; // Add currentUserId here
+  final SharedPreferencesService sharedPrefService;
 
-  const MainPage({super.key, required this.userRepository, required this.transactionRepository});
+  const MainPage({
+    Key? key,
+    required this.userRepository,
+    required this.transactionRepository,
+    this.currentUserId, // Make it nullable
+    required this.sharedPrefService,// Add currentUserId to the constructor
+  }) : super(key: key);
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -41,20 +49,22 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final List<Widget> widgetOptions = <Widget>[
       const HomePage(),
-      HistoryPage(transactionRepository: widget.transactionRepository, currentUserId: sharedPrefService.uid,),
+      HistoryPage(transactionRepository: widget.transactionRepository, currentUserId: sharedPrefService.uid),
       ProfilePage(userRepository: widget.userRepository),
     ];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kopma'),
-        actions:  <Widget>[
+        actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.shopping_cart,),
+            icon: const Icon(Icons.shopping_cart),
             onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) {
-                    return CartPage();
-                  }));
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CartPage(currentUserId: widget.currentUserId ?? ''), // Use null-aware operator to handle null case
+                ),
+              );
             },
           )
         ],
