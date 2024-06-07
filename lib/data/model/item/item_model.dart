@@ -15,6 +15,7 @@ class ItemModel extends Equatable {
   final String? sellerEmail;
   final String? sellerAddress;
   final String? sellerImage;
+  final String? itemId;
 
   const ItemModel({
     this.id,
@@ -29,6 +30,7 @@ class ItemModel extends Equatable {
     this.sellerEmail,
     this.sellerAddress,
     this.sellerImage,
+    this.itemId,
   });
 
   /// Empty item.
@@ -50,6 +52,7 @@ class ItemModel extends Equatable {
   /// Modify item parameters
   ItemModel copyWith({
     String? id,
+    String? itemId,
     String? name,
     String? image,
     String? category,
@@ -64,6 +67,7 @@ class ItemModel extends Equatable {
   }) {
     return ItemModel(
       id: id ?? this.id,
+      itemId: this.itemId,
       name: name ?? this.name,
       image: image ?? this.image,
       category: category ?? this.category,
@@ -75,6 +79,23 @@ class ItemModel extends Equatable {
       sellerEmail: sellerEmail ?? this.sellerEmail,
       sellerAddress: sellerAddress ?? this.sellerAddress,
       sellerImage: sellerImage ?? this.sellerImage,
+    );
+  }
+
+  factory ItemModel.fromCartCollection(CartCollection cartCollection) {
+    return ItemModel(
+      id: cartCollection.itemId!,
+      name: cartCollection.name,
+      image: cartCollection.image,
+      category: cartCollection.category,
+      description: cartCollection.description,
+      quantity: cartCollection.quantity,
+      price: cartCollection.price,
+      sellerId: cartCollection.sellerId,
+      sellerName: cartCollection.sellerName,
+      sellerEmail: cartCollection.sellerEmail,
+      sellerAddress: cartCollection.sellerAddress,
+      sellerImage: cartCollection.sellerImage,
     );
   }
 

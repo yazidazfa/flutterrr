@@ -14,26 +14,29 @@ class FirebaseItemDataSource {
   final usersCollection = FirebaseFirestore.instance.collection('users');
   final itemsCollection = FirebaseFirestore.instance.collection('items');
   final itemsStorage = FirebaseStorage.instance.ref().child('/items');
-  final sharedPrefService = serviceLocator<SharedPreferencesService>();
   final transactionCollection =
   FirebaseFirestore.instance.collection('transaction');
 
   Future<bool> postItem(ItemModel item) async {
     try {
-      final user = await usersCollection.doc(sharedPrefService.uid).get().then(
-              (value) =>
-              UserModel.fromEntity(UserEntity.fromDocument(value.data()!)));
-      if (user.address != null && user.name.isNotEmpty) {
-        String id = itemsCollection.doc().id;
-        return await itemsCollection
-            .doc(id)
-            .set(item
-            .toEntity(id, user.id, user.name, user.email, user.address!,
-            user.image)
-            .toDocument())
-            .then((value) => true);
+      final sharedPrefService = await SharedPreferencesService.getInstance();
+      final userDoc = await usersCollection.doc(sharedPrefService.uid).get();
+      if (userDoc.exists && userDoc.data() != null) {
+        final user = UserModel.fromEntity(UserEntity.fromDocument(userDoc.data()!));
+        if (user.address != null && user.name.isNotEmpty) {
+          String id = itemsCollection.doc().id;
+          return await itemsCollection
+              .doc(id)
+              .set(item
+              .toEntity(id, user.id, user.name, user.email, user.address!,
+              user.image)
+              .toDocument())
+              .then((value) => true);
+        } else {
+          return false;
+        }
       } else {
-        return false;
+        throw Exception("User not found");
       }
     } catch (e) {
       log(e.toString());
@@ -41,15 +44,14 @@ class FirebaseItemDataSource {
     }
   }
 
-
   Future<ItemModel> getDetailItem(String id) async {
     try {
-      final item = itemsCollection.doc(id);
-      if (await item.snapshots().isEmpty) {
-        return ItemModel.empty;
+      final itemDoc = await itemsCollection.doc(id).get();
+      if (itemDoc.exists && itemDoc.data() != null) {
+        return ItemModel.fromEntity(ItemEntity.fromDocument(itemDoc.data()!));
       } else {
-        return item.get().then((value) =>
-            ItemModel.fromEntity(ItemEntity.fromDocument(value.data()!)));
+        log("Item with id $id not found");
+        return ItemModel.empty;
       }
     } catch (e) {
       log(e.toString());
@@ -68,62 +70,72 @@ class FirebaseItemDataSource {
 
   Future<bool> buyItem(String itemId, int quantity) async {
     try {
-      ItemModel item = await getDetailItem(itemId);
-      UserModel user = await usersCollection
-          .doc(sharedPrefService.uid)
-          .get()
-          .then((value) =>
-          UserModel.fromEntity(UserEntity.fromDocument(value.data()!)));
+      final sharedPrefService = await SharedPreferencesService.getInstance();
 
-      if ((item.quantity - quantity) >= 0) {
-        int totalPrice = quantity * item.price;
-        int userBalance = user.balance ?? 0;
+      // Check if sharedPrefService.uid is not null or empty
+      if (sharedPrefService.uid.isNotEmpty) {
+        ItemModel item = await getDetailItem(itemId);
+        if (item == ItemModel.empty) {
+          throw Exception("Item not found");
+        }
+        final userDoc = await usersCollection.doc(sharedPrefService.uid).get();
+        if (!userDoc.exists || userDoc.data() == null) {
+          throw Exception("User not found");
+        }
+        UserModel user = UserModel.fromEntity(UserEntity.fromDocument(userDoc.data()!));
 
-        if (userBalance >= totalPrice) {
-          await itemsCollection.doc(item.id).update(item
-              .toEntity(itemId, item.sellerId!, item.sellerName!,
-              item.sellerEmail!, item.sellerAddress!, item.sellerImage)
-              .toDocument());
+        if ((item.quantity - quantity) >= 0) {
+          int totalPrice = quantity * item.price;
+          int userBalance = user.balance ?? 0;
 
-          await usersCollection.doc(user.id).update(user
-              .copyWith(balance: userBalance - totalPrice)
-              .toEntity()
-              .toDocument());
+          if (userBalance >= totalPrice) {
+            await itemsCollection.doc(item.id).update(item
+                .toEntity(itemId, item.sellerId!, item.sellerName!,
+                item.sellerEmail!, item.sellerAddress!, item.sellerImage)
+                .toDocument());
 
-          String id = transactionCollection.doc().id;
-          if(user.address != null || user.address.toString().isNotEmpty) {
-            return await transactionCollection
-                .doc(id)
-                .set(TransactionModel(
-                id: id,
-                dateTime: DateTime.now().toUtc(),
-                itemId: itemId,
-                itemName: item.name,
-                itemImage: item.image,
-                itemQuantity: quantity,
-                itemPrice: totalPrice,
-                buyerId: user.id,
-                buyerName: user.name,
-                buyerEmail: user.email,
-                buyerAddress: user.address!,
-                buyerMoney: userBalance,
-                sellerId: item.sellerId!,
-                sellerName: item.sellerName!,
-                sellerEmail: item.sellerEmail!,
-                sellerAddress: item.sellerAddress!,
-                sellerImage: item.sellerImage)
+            await usersCollection.doc(user.id).update(user
+                .copyWith(balance: userBalance - totalPrice)
                 .toEntity()
-                .toDocument())
-                .then((value) => true);
+                .toDocument());
+
+            String id = transactionCollection.doc().id;
+            if (user.address != null && user.address!.isNotEmpty) {
+              return await transactionCollection
+                  .doc(id)
+                  .set(TransactionModel(
+                  id: id,
+                  dateTime: DateTime.now().toUtc(),
+                  itemId: itemId,
+                  itemName: item.name,
+                  itemImage: item.image,
+                  itemQuantity: quantity,
+                  itemPrice: totalPrice,
+                  buyerId: user.id,
+                  buyerName: user.name,
+                  buyerEmail: user.email,
+                  buyerAddress: user.address!,
+                  buyerMoney: userBalance,
+                  sellerId: item.sellerId!,
+                  sellerName: item.sellerName!,
+                  sellerEmail: item.sellerEmail!,
+                  sellerAddress: item.sellerAddress!,
+                  sellerImage: item.sellerImage)
+                  .toEntity()
+                  .toDocument())
+                  .then((value) => true);
+            } else {
+              throw Exception('Can\'t ship without an address! Add it now.');
+            }
           } else {
-            throw Exception('Can\'t ship without an address! Add it now.');
+            throw Exception('Bummer, balance is a bit low. Top up first?');
           }
         } else {
-          throw Exception('Bummer, balance is a bit low. Top up first?');
+          throw Exception(
+              'Insufficient stock.\nPlease reduce the quantity or choose a different item');
         }
       } else {
-        throw Exception(
-            'Insufficient stock.\nPlease reduce the quantity or choose a different item');
+        throw Exception('Shared preferences UID is null or empty');
       }
     } catch (e) {
       log(e.toString());

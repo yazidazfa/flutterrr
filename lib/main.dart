@@ -34,7 +34,7 @@ void main() async {
   Bloc.observer = SimpleBlocObserver();
 
   final userRepository = FirebaseUserDataSource();
-  final itemRepository = ItemRepositoryImpl(FirebaseItemDataSource(), LocalCartDataSource());
+  final itemRepository = ItemRepositoryImpl(FirebaseItemDataSource(), LocalCartDataSource(FirebaseItemDataSource()));
   final transactionRepository = TransactionRepository(FirebaseFirestore.instance);
 
   // Initialize sharedPrefService

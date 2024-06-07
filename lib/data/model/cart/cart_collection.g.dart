@@ -170,6 +170,7 @@ CartCollection _cartCollectionDeserialize(
   final object = CartCollection(
     category: reader.readString(offsets[0]),
     description: reader.readString(offsets[1]),
+    id: id,
     image: reader.readString(offsets[2]),
     itemId: reader.readStringOrNull(offsets[3]),
     name: reader.readString(offsets[4]),
@@ -229,7 +230,9 @@ List<IsarLinkBase<dynamic>> _cartCollectionGetLinks(CartCollection object) {
 }
 
 void _cartCollectionAttach(
-    IsarCollection<dynamic> col, Id id, CartCollection object) {}
+    IsarCollection<dynamic> col, Id id, CartCollection object) {
+  object.id = id;
+}
 
 extension CartCollectionQueryWhereSort
     on QueryBuilder<CartCollection, CartCollection, QWhere> {

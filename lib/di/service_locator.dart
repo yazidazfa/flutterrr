@@ -21,7 +21,7 @@ Future<void> setupServiceLocator() async {
   serviceLocator.registerLazySingleton<LocalDatabase>(() => LocalDatabase());
 
   // Register LocalCartDataSource
-  serviceLocator.registerLazySingleton<LocalCartDataSource>(() => LocalCartDataSource());
+  serviceLocator.registerLazySingleton<LocalCartDataSource>(() => LocalCartDataSource(FirebaseItemDataSource()));
 
   // Register FirebaseItemDataSource
   serviceLocator.registerLazySingleton<FirebaseItemDataSource>(() => FirebaseItemDataSource());

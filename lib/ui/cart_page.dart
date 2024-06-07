@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kopma/data/model/item/item_model.dart';
 import '../../../di/service_locator.dart';
+import '../bloc/detail_item_bloc/detail_item_bloc.dart';
+import '../data/datasource/local/local_cart_datasource.dart';
+import '../data/datasource/network/firebase_item_datasource.dart';
 import '../data/item_repository.dart';
-import '../helper/cart_helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CartPage extends StatefulWidget {
+  const CartPage({Key? key}) : super(key: key);
+
   @override
-  _CartPageState createState() => _CartPageState();
+  State<CartPage> createState() => _CartPageState();
 }
 
 class _CartPageState extends State<CartPage> {
   late Future<List<ItemModel>> _cartItemsFuture;
+  LocalCartDataSource cartDataSource = LocalCartDataSource(FirebaseItemDataSource());
+  final ItemRepository _itemRepository = serviceLocator<ItemRepository>();
+  Map<String, int> _quantities = {};
+  List<ItemModel> cartItems = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -18,65 +29,168 @@ class _CartPageState extends State<CartPage> {
     _loadCartItems();
   }
 
-  void _loadCartItems() {
+  Future<void> _buyItem(BuildContext context, String? itemIdIsar, String? itemId, int quantity) async {
+    bool success = await cartDataSource.buyItemFromCart(context, itemIdIsar!, itemId!, quantity);
+    if (success) {
+      _loadCartItems();
+    }
+  }
+
+  Future<void> _loadCartItems() async {
     setState(() {
-      _cartItemsFuture = CartHelper.getCartItems();
+      _cartItemsFuture = _itemRepository.getListItemFromCart();
+      isLoading = true; // Set loading state to true
     });
+
+    try {
+      final items = await _cartItemsFuture;
+      setState(() {
+        _quantities = {
+        };
+        isLoading = false; // Set loading state to false when loading is complete
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false; // Set loading state to false on error
+      });
+      // Handle error
+      print('Error loading cart items: $e');
+    }
+  }
+
+  Future<void> _incrementCounter(String itemId) async {
+    setState(() {
+      int currentQuantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
+      _quantities[itemId] = currentQuantity + 1;
+    });
+  }
+
+  Future<void> _decrementCounter(String itemId) async {
+    setState(() {
+      int currentQuantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
+      if (currentQuantity > 1) {
+        _quantities[itemId] = currentQuantity - 1;
+      }
+    });
+  }
+
+  Future<void> _deleteItem(String itemId) async {
+    await _itemRepository.deleteItemFromCart(itemId);
+    _loadCartItems();
+  }
+
+  int _calculateTotalPrice(ItemModel item, int quantity) {
+    return item.price * quantity;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cart'),
+        title: const Text('Cart'),
       ),
-      body: FutureBuilder<List<ItemModel>>(
+    body: RefreshIndicator(
+    onRefresh: () => _loadCartItems(), // Reload cart items when refreshed
+      child: FutureBuilder<List<ItemModel>>(
         future: _cartItemsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error loading cart items'));
+            return const Center(child: Text('Error loading cart items'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No items in cart'));
+            return const Center(child: Text('No items in cart'));
           } else {
             List<ItemModel> cartItems = snapshot.data!;
             return ListView.builder(
               itemCount: cartItems.length,
               itemBuilder: (context, index) {
                 ItemModel item = cartItems[index];
-                return ListTile(
-                  leading: Image.network(
-                    item.image,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                  title: Text(item.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Seller: ${item.sellerName}'),
-                      Text('Price: ${item.price}'),
-                      Row(
-                        children: [
-                          Text('Quantity: '),
-                          _buildQuantityAdjustment(item),
+                String itemId = item.id!;
+                int quantity = _quantities[itemId] ?? 1; // Default to 1 if quantity is not set
+                int totalPrice = _calculateTotalPrice(item, quantity);
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Container(
+                            height: 120,
+                            child: CachedNetworkImage(
+                              imageUrl: item.image,
+                              fit: BoxFit.fitHeight,
+                              imageBuilder: (context, imageProvider) => Container(
+                                height: 120,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: imageProvider,
+                                    fit: BoxFit.fitHeight,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  item.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text('Seller: ${item.sellerName}'),
+                                Text('Rp.${item.price}'),
+                                Text('Total: Rp.${totalPrice.toString()}'),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    IconButton(
+                                      icon: const Icon(Icons.remove),
+                                      onPressed: () => _decrementCounter(itemId),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8.0), // Adjust the horizontal padding as needed
+                                      child: Text('$quantity'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed: () => _incrementCounter(itemId),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: <Widget>[
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0), // Add some bottom padding
+                                child: IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  onPressed: () {
+                                    _deleteItem(itemId);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 8), // Add some vertical space between the icons and button
+                              ElevatedButton(
+                                onPressed: () {
+                                  _buyItem(context, item.id, item.itemId, quantity);
+                                },
+                                child: const Text('Beli'),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () async {
-                      bool success = await CartHelper.removeItemFromCart(item.id.toString());
-                      if (success) {
-                        setState(() {
-                          // Reload cart items after item deletion
-                          _loadCartItems();
-                        });
-                      }
-                    },
+                    ),
                   ),
                 );
               },
@@ -84,32 +198,8 @@ class _CartPageState extends State<CartPage> {
           }
         },
       ),
-    );
-  }
-
-  Widget _buildQuantityAdjustment(ItemModel item) {
-    return Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.remove),
-          onPressed: () async {
-            if (item.quantity > 1) {
-              await CartHelper.updateItemQuantity(item.id.toString(), item.quantity - 1);
-              // Reload cart items after quantity update
-              _loadCartItems();
-            }
-          },
-        ),
-        Text('${item.quantity}'),
-        IconButton(
-          icon: Icon(Icons.add),
-          onPressed: () async {
-            await CartHelper.updateItemQuantity(item.id.toString(), item.quantity + 1);
-            // Reload cart items after quantity update
-            _loadCartItems();
-          },
-        ),
-      ],
-    );
+    )
+    )
+    ;
   }
 }

@@ -18,7 +18,7 @@ class SharedPreferencesService {
     return _instance!;
   }
 
-  // Persist and retrieve counter value
+  // Persist and retrieve UID value
   String get uid => _getData(_kUidKey) ?? "";
   set uid(String value) => _saveData(_kUidKey, value);
 

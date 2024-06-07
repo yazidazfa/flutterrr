@@ -99,7 +99,6 @@ class ItemRepositoryImpl implements ItemRepository {
       rethrow;
     }
   }
-  
 
   @override
   Future<bool> deleteItemFromCart(String itemId) async {
