@@ -150,39 +150,54 @@ class _CartPageState extends State<CartPage> {
                         int quantity = _quantities[itemId] ?? 1; // Default quantity to 1
                         int totalPrice = item.price * quantity;
                         return Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                           child: Card(
+                            elevation: 4.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             child: Padding(
-                              padding: const EdgeInsets.all(8.0),
+                              padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0), // Equal padding on top and bottom
                               child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: <Widget>[
                                   CachedNetworkImage(
                                     imageUrl: item.image,
-                                    height: 120,
-                                    fit: BoxFit.fitHeight,
+                                    height: 160,
+                                    width: 130,
+                                    fit: BoxFit.contain,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: <Widget>[
                                         Text(
                                           item.name,
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
                                         ),
+                                        const SizedBox(height: 5),
                                         Text('Seller: ${item.sellerName}'),
-                                        Text('Rp.${item.price}'),
+                                        const SizedBox(height: 5),
+                                        Text('Price: Rp.${item.price}'),
+                                        const SizedBox(height: 5),
                                         Text('Total: Rp.${totalPrice.toString()}'),
+                                        const SizedBox(height: 10),
                                         Row(
                                           children: <Widget>[
                                             IconButton(
-                                              icon: const Icon(Icons.remove),
+                                              icon: const Icon(Icons.remove, size: 24), // Increase size to 24
                                               onPressed: () => _decrementCounter(itemId),
                                             ),
+                                            const SizedBox(width: 5), // Add some horizontal space between icons and quantity text
                                             Text('$quantity'),
+                                            const SizedBox(width: 5), // Add some horizontal space between quantity text and add icon
                                             IconButton(
-                                              icon: const Icon(Icons.add),
+                                              icon: const Icon(Icons.add, size: 24), // Increase size to 24
                                               onPressed: () => _incrementCounter(itemId),
                                             ),
                                           ],
@@ -194,7 +209,7 @@ class _CartPageState extends State<CartPage> {
                                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                     children: <Widget>[
                                       IconButton(
-                                        icon: const Icon(Icons.delete),
+                                        icon: const Icon(Icons.delete, size: 24),
                                         onPressed: () {
                                           _deleteItem(itemId);
                                         },
@@ -203,7 +218,7 @@ class _CartPageState extends State<CartPage> {
                                         onPressed: () {
                                           _buyItem(context, item.id, item.itemId, quantity);
                                         },
-                                        child: const Text('Beli'),
+                                        child: const Text('Buy'),
                                       ),
                                     ],
                                   ),
@@ -215,17 +230,27 @@ class _CartPageState extends State<CartPage> {
                       },
                     ),
                   ),
+                  const Divider(thickness: 2),
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Total: Rp.${_totalPrice.toString()}'),
+                        Text(
+                          'Total: Rp.${_totalPrice.toString()}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         ElevatedButton(
                           onPressed: () {
                             _checkout(context);
                           },
                           child: const Text('Checkout'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
                         ),
                       ],
                     ),
