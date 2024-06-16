@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.example.kopma',
   );
 }
-const iOSClientId = 'your-client-id.apps.googleusercontent.com';
+const iOSClientId = '59023748498-dq7er6g5petf41p7a9neb9a9m8ddgj25.apps.googleusercontent.com';
 const webClientId = '59023748498-gb7ne9699v10r8hr8a0mdgv2m8ciq6b6.apps.googleusercontent.com';
 
 
